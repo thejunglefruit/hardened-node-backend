@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2026 The Jungle Fruit
 # Installs, as root inside the box (Debian/Ubuntu x86-64): Node LTS, Litestream, cloudflared and automatic
-# security updates. Never "curl | bash": every file is downloaded, its SHA256 is checked against what the
+# security updates. A download is never piped straight into a shell: every file is saved, its SHA256 is checked against what the
 # publisher lists, and only then installed.
 #
 # Optional pins: NODE_VERSION=v24.x.y LITESTREAM_VERSION=0.5.x CLOUDFLARED_VERSION=YYYY.M.N

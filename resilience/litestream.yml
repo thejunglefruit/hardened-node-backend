@@ -1,0 +1,39 @@
+# /etc/litestream.yml — which database is replicated, and where. Litestream 0.5.x.
+#
+# The PRIMARY replica is a local directory inside the box (/var/replica/app). A scheduled job copies it off the
+# machine (encrypted). A local primary keeps replicating even when the network or the object store is flaky.
+#
+# Restore (with the app stopped):
+#   systemctl stop app litestream
+#   litestream restore -config /etc/litestream.yml -o /opt/app/data/app.sqlite /opt/app/data/app.sqlite
+#   chown app:app /opt/app/data/app.sqlite*
+#   systemctl start app litestream
+# Dry run without touching anything:
+#   litestream restore -config /etc/litestream.yml -o /tmp/test.sqlite /opt/app/data/app.sqlite
+
+dbs:
+  - path: /opt/app/data/app.sqlite
+    replica:
+      type: file
+      path: /var/replica/app
+      # How often WAL changes are shipped (default 1 s). For low traffic 10 s is plenty.
+      sync-interval: 10s
+      # Point-in-time history kept in the replica, with a fresh snapshot every 24 h.
+      retention: 72h
+      snapshot-interval: 24h
+
+# ---- Optional S3-compatible replica (any S3-compatible object store, or MinIO on a VPS) ----
+# Litestream 0.5 takes ONE replica per database. Either swap the block above for this one, or keep the file
+# replica and let a second machine pull /var/replica with rsync (more robust when the network is flaky).
+# Credentials do NOT go here: put them in /etc/litestream.env (chmod 600) and load it with EnvironmentFile.
+#
+#    replica:
+#      type: s3
+#      bucket: app-replica
+#      path: app
+#      endpoint: https://<your-s3-endpoint>
+#      region: auto
+#      force-path-style: true
+#      # LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY come from the environment
+#      sync-interval: 10s
+#      retention: 72h

@@ -1,0 +1,26 @@
+# /etc/systemd/system/cloudflared.service — outbound tunnel to the edge (no ports opened on the router).
+# Installed disabled; enable it once the tunnel exists: systemctl enable --now cloudflared
+[Unit]
+Description=cloudflared tunnel (app)
+After=network-online.target app.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=app
+Group=app
+ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel --config /etc/cloudflared/config.yml run
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

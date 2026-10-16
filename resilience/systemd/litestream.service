@@ -1,0 +1,27 @@
+# /etc/systemd/system/litestream.service — continuous replica of the app's SQLite (replaces the unit shipped in the .deb).
+# Runs as the app user: Litestream must read the database, write -wal/-shm and the replica folder.
+[Unit]
+Description=Litestream: continuous replica of /opt/app/data/app.sqlite
+After=network-online.target app.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=app
+Group=app
+ExecStart=/usr/bin/litestream replicate -config /etc/litestream.yml
+Restart=always
+RestartSec=3
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/app/data /var/replica/app
+PrivateTmp=yes
+ProtectKernelTunables=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

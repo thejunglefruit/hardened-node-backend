@@ -1,0 +1,10 @@
+# /etc/systemd/system/app-watchdog.service — one watchdog pass (triggered by the .timer).
+[Unit]
+Description=app watchdog (curl /health; 3 failures in a row = restart)
+After=app.service
+
+[Service]
+Type=oneshot
+# As root: it needs "systemctl restart". It only runs curl and systemctl.
+ExecStart=/usr/local/bin/app-watchdog.sh
+Environment=URL=http://127.0.0.1:8787/health SERVICE=app LOG=/var/log/app-watchdog.log

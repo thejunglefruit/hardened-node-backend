@@ -1,0 +1,16 @@
+{
+  "name": "hardened-node-backend",
+  "version": "1.0.0",
+  "description": "Zero-dependency hardening kit for node:http servers: per-IP limits, hashed API keys, SSRF guard, persistent queue, redacting logger, graceful shutdown, plus an attack battery",
+  "type": "module",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "scripts": {
+    "test": "node --test --test-concurrency=1",
+    "attack": "node attack/attack.mjs",
+    "example": "node examples/server.js"
+  },
+  "engines": { "node": ">=22.13" }
+}

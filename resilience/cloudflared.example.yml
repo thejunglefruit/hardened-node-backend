@@ -1,0 +1,30 @@
+# /etc/cloudflared/config.yml — tunnel template. Placeholder values only.
+#
+# One-time setup inside the box, as the app user:
+#   1. cloudflared tunnel login
+#   2. cloudflared tunnel create app                 # writes ~/.cloudflared/<UUID>.json (credentials)
+#   3. sudo install -o app -m 600 ~/.cloudflared/<UUID>.json /etc/cloudflared/app.json
+#   4. sudo cp config.example.yml /etc/cloudflared/config.yml and put the real UUID below
+#   5. cloudflared tunnel route dns app api.example.com
+#   6. sudo systemctl enable --now cloudflared
+#   7. In the app: behindTunnel: true (the real client IP then comes from the edge's header)
+
+tunnel: 00000000-0000-0000-0000-000000000000
+credentials-file: /etc/cloudflared/app.json
+# Versions are pinned by install_tools.sh (SHA256 checked), not auto-updated.
+no-autoupdate: true
+
+ingress:
+  - hostname: api.example.com
+    service: http://127.0.0.1:8787
+    originRequest:
+      connectTimeout: 10s
+      noTLSVerify: false
+  # Anything else is refused (mandatory last rule).
+  - service: http_status:404
+
+# ---- A second connector on another machine (cheap high availability) ----
+# A tunnel can have SEVERAL connectors; the edge sends traffic to the live ones. Install the same verified
+# package on a VPS, copy the credentials of the SAME tunnel over a safe channel, plus this file, and run a copy
+# of the app on its 127.0.0.1:8787. Two apps with two SQLite files drift apart: only one must write (the other
+# degraded / read-only), or move to a shared replica.

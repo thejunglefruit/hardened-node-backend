@@ -1,0 +1,38 @@
+# /etc/systemd/system/app.service — the Node app under systemd. Rename "app" and the paths for your service.
+[Unit]
+Description=app (hardened Node API)
+After=network-online.target
+Wants=network-online.target
+# No restart limit: if the app crash-loops, systemd keeps relaunching it every 3 s (the watchdog logs it).
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=app
+Group=app
+WorkingDirectory=/opt/app
+Environment=NODE_ENV=production
+ExecStart=/usr/local/bin/node server.js
+Restart=always
+RestartSec=3
+# Clean stop: SIGTERM -> installShutdown() drains and closes SQLite; after 20 s, SIGKILL.
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# --- Hardening: even if the app is compromised, the process can only write to data/ ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/app/data
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictRealtime=yes
+LockPersonality=yes
+# Memory cap: if it runs away, better to die and come back clean.
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

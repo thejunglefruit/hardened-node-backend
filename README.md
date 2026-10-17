@@ -79,8 +79,4 @@ Node's built-in runner, no packages to install: 11 tests written as attacks (bru
 
 Made by a motion and creative technologist working with AI agents. The kit came out of hardening small self-hosted services and turning every finding into a module, a test and an attack that proves it.
 
----
-
-**En español:** kit sin dependencias para que un backend Node pequeño aguante internet: límites por IP, claves con hash, guardia anti-SSRF, cola persistente, registro con secretos tachados y apagado ordenado, con una batería de 24 ataques que lo demuestra, listas de comprobación para Node y FastAPI y un despliegue con systemd y Litestream que se levanta solo.
-
 Licence: GPL-3.0-or-later (see `LICENSE`)

@@ -80,3 +80,5 @@ Node's built-in runner, no packages to install: 11 tests written as attacks (bru
 Made by a motion and creative technologist working with AI agents. The kit came out of hardening small self-hosted services and turning every finding into a module, a test and an attack that proves it.
 
 Licence: GPL-3.0-or-later (see `LICENSE`)
+
+**Commercial licence.** If you want to use it in a closed product without the GPL obligations, a commercial licence is available: thejunglefruit@proton.me

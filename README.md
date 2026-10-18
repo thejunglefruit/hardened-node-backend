@@ -75,9 +75,9 @@ Node's built-in runner, no packages to install: 11 tests written as attacks (bru
 - Checking a URL is not enough: resolve it, check **every** address, then connect to the checked IP, or DNS rebinding walks straight in.
 - A body over the cap is drained up to four times the limit so the client gets a clean 413, and beyond that the socket is cut.
 
-## Built with AI-assisted workflows
+## About
 
-Made by a motion and creative technologist working with AI agents. The kit came out of hardening small self-hosted services and turning every finding into a module, a test and an attack that proves it.
+Made by The Jungle Fruit, a motion and creative technologist. The kit came out of hardening small self-hosted services and turning every finding into a module, a test and an attack that proves it.
 
 Licence: GPL-3.0-or-later (see `LICENSE`)
 

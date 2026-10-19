@@ -47,16 +47,33 @@ server.listen(8787, '127.0.0.1');
 | `headers.js` | `nosniff`, `DENY`, `no-store`, strict CSP, no `X-Powered-By`, HSTS behind the tunnel | clickjacking, MIME sniffing, fingerprinting |
 | `errors.js` | fixed messages per status, everything else a plain 500 | stack-trace and secret leaks |
 | `logger.js` | JSON lines, keys/tokens/passwords/phone numbers redacted, size rotation | log harvesting |
-| `persistentQueue.js` | SQLite job queue with a cap, backoff retries, crash recovery | queue flooding, lost work on crash |
+| `persistentQueue.js` | SQLite job queue with a cap, backoff retries, crash recovery, dead-letter set (`listDead`, `requeue`, `onDead`) | queue flooding, lost work on crash, silently dropped jobs |
 | `shutdown.js` | graceful stop on SIGTERM; log and exit on unknown errors | half-broken processes serving traffic |
 
 The attack battery (`attack/attack.mjs`) boots the example server in-process on `127.0.0.1`, runs 24 attack families against it and prints attack, expected, got and OK. Copy it next to your app and point it at your own server factory. It never talks to anything it did not start itself.
+
+## Reliability layer
+
+Security keeps the wrong people out; reliability keeps the service up when something fails and tells you about it. `import ... from 'hardened-node-backend/reliability'` (`src/reliability/`), still zero dependencies.
+
+| Module | What it does | Failure it survives |
+|---|---|---|
+| `retries.js` | `withTimeout()`, `retry()` with exponential backoff + full jitter and a total time budget, `circuitBreaker()` (closed, open, half-open) | a hung dependency, a flapping API, retry storms |
+| `idempotency.js` | `Idempotency-Key` → the stored response is replayed; same key with another body is a 422; `seenEvent()` for webhooks | double clicks, client retries, replayed webhooks |
+| `cache.js` | LRU + TTL, `getOrSet()` computes once under concurrent misses, invalidation by tag | thundering herds, stale data |
+| `health.js` | `/health/alive` (restart me) and `/health/ready` (stop sending traffic) kept apart; DB, disk and queue checks | restart loops when a dependency is down |
+| `metrics.js` | counters, gauges, histograms, Prometheus text, exact p50/p95/p99, SLO and error budget | flying blind; "it feels slow" |
+| `migrations.js` | numbered `.sql` files, one transaction each, `schema_version` with fingerprints; refuses edits to the past | schema drift, half-applied changes |
+| `flags.js` | JSON feature flags that hot-reload; stable percentage rollout per user | risky releases without a switch |
+| `tracing.js` | sane `x-request-id` in, same id out and in every log line; hostile ids ignored | untraceable requests, header injection |
+
+The queue also gained a dead-letter set: a job that exhausts its attempts is kept (never dropped), can be listed with `listDead()`, alerts through `onDead`, and goes back with `requeue(id)`. See `checklists/RELIABILITY.md` for what matters at small scale and what only matters at large scale.
 
 ## What else is in the box
 
 | Folder | Contents |
 |---|---|
-| `checklists/` | `NODE.md` (apply the kit in ten minutes), `FASTAPI.md` (local FastAPI backends), `ASVS_L1.md` (OWASP ASVS 5.0 L1 mapped to kit vs app) |
+| `checklists/` | `NODE.md` (apply the kit in ten minutes), `FASTAPI.md` (local FastAPI backends), `ASVS_L1.md` (OWASP ASVS 5.0 L1 mapped to kit vs app), `RELIABILITY.md` (which production concepts matter at small scale, and where each lives) |
 | `docs/` | `GUIDE.md` (the layers from the edge to the backup), `THREAT_MODEL.md` (STRIDE template already filled for the kit), `INCIDENT_PLAYBOOK.md` (what to do at 3 a.m.) |
 | `resilience/` | dedicated box (WSL2, VM or VPS), hardened systemd units, Litestream replica, outbound tunnel template, health watchdog, SHA256-checked tool installer |
 
@@ -66,7 +83,7 @@ The attack battery (`attack/attack.mjs`) boots the example server in-process on 
 npm test
 ```
 
-Node's built-in runner, no packages to install: 11 tests written as attacks (brute force, bursts, huge bodies, foreign origins, SSRF variants, redaction, queue crash recovery) plus the full battery, which must stop 24 out of 24. Everything runs on the loopback interface; one SSRF check uses a literal public IP and needs no network.
+Node's built-in runner, no packages to install: 11 tests written as attacks (brute force, bursts, huge bodies, foreign origins, SSRF variants, redaction, queue crash recovery), 18 reliability tests (each module against the failure it has to survive) plus the full battery, which must stop 24 out of 24. Everything runs on the loopback interface; one SSRF check uses a literal public IP and needs no network.
 
 ## Lessons learnt
 

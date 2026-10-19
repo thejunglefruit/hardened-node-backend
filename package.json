@@ -6,7 +6,7 @@
   "private": true,
   "license": "GPL-3.0-or-later",
   "main": "src/index.js",
-  "exports": { ".": "./src/index.js" },
+  "exports": { ".": "./src/index.js", "./reliability": "./src/reliability/index.js" },
   "scripts": {
     "test": "node --test --test-concurrency=1",
     "attack": "node attack/attack.mjs",

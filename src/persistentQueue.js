@@ -7,6 +7,7 @@ import { HttpError } from './errors.js';
 
 export function createPersistentQueue({
   db, channel, process: handle, max = 500, maxAttempts = 5, minPauseMs = 0, maxPauseMs = 0, baseRetryMs = 5000, maxBackoffMs = 3600000, logger = null, now = Date.now,
+  onDead = null, // (job) => void, to alert when a job moves to the dead-letter set
 }) {
   if (!db || !channel || typeof handle !== 'function') throw new Error('createPersistentQueue: db, channel and process are required');
   db.exec(`CREATE TABLE IF NOT EXISTS job_queue (
@@ -16,6 +17,10 @@ export function createPersistentQueue({
   ); CREATE INDEX IF NOT EXISTS job_queue_channel_status ON job_queue(channel, status, next_at)`);
   // whatever was "running" when the process died goes back to pending
   db.prepare("UPDATE job_queue SET status = 'pending' WHERE channel = ? AND status = 'running'").run(channel);
+  // dead-letter set: what exhausted its attempts stays as 'failed' (never lost), and can be listed and requeued by hand
+  const qDead = db.prepare("SELECT id, attempts, created, error, payload FROM job_queue WHERE channel = ? AND status = 'failed' ORDER BY id LIMIT ?");
+  const qDeadCount = db.prepare("SELECT COUNT(*) AS n FROM job_queue WHERE channel = ? AND status = 'failed'");
+  const qRequeue = db.prepare("UPDATE job_queue SET status = 'pending', attempts = 0, next_at = ?, error = NULL WHERE id = ? AND channel = ? AND status = 'failed'");
 
   const qPending = db.prepare("SELECT COUNT(*) AS n FROM job_queue WHERE channel = ? AND status IN ('pending','running')");
   const qInsert = db.prepare('INSERT INTO job_queue (channel, payload, created, next_at) VALUES (?, ?, ?, ?)');
@@ -49,6 +54,7 @@ export function createPersistentQueue({
         if (attempts >= maxAttempts || e?.permanent) {
           qFailed.run(attempts, message, row.id);
           logger?.error('queue_permanent_failure', { channel, id: row.id, attempts, error: message });
+          try { onDead?.({ id: row.id, attempts, error: message }); } catch { /* a broken alert must not stop the queue */ }
         } else {
           const wait = Math.min(maxBackoffMs, baseRetryMs * 2 ** (attempts - 1));
           qRetry.run(attempts, now() + wait, message, row.id);
@@ -68,6 +74,11 @@ export function createPersistentQueue({
       return Number(r.lastInsertRowid);
     },
     get pending() { return qPending.get(channel).n; },
+    get dead() { return qDeadCount.get(channel).n; },
+    /** Jobs that exhausted their attempts (payload already parsed). */
+    listDead(limit = 50) { return qDead.all(channel, limit).map((j) => ({ ...j, payload: JSON.parse(j.payload) })); },
+    /** Puts a dead job back in the queue with its attempts reset. Returns true if it existed. */
+    requeue(id) { const r = qRequeue.run(now(), id, channel).changes > 0; if (r && wake) wake(); return r; },
     start() { if (active) return; active = true; loop = run(); },
     /** Stops the loop; if a job hangs, waits no longer than `maxWaitMs` (it stays "running" and returns to pending on the next start). */
     async stop(maxWaitMs = 3000) {
